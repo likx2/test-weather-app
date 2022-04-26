@@ -1,10 +1,10 @@
 import React, { FC, useState } from "react";
-import UserInput from "./UserInput/UserInput";
-import Button from "./Button.tsx/Button";
+import UserInput from "./UserInput";
+import Button from "./Button";
 import LocationService from "../services/LocationService";
 import { LocationWithWeather } from "../types";
-import Error from "./Error/Error";
-import LocationWeatherItem from "./LocationWeatherItem/LocationWeatherItem";
+import Error from "./Error";
+import LocationWeatherItem from "./LocationWeatherItem";
 
 interface MainProps {
 
@@ -13,7 +13,7 @@ interface MainProps {
 interface MainState {
     isFetching: boolean;
     searchWord: string;
-    location: LocationWithWeather | null;
+    locations: LocationWithWeather[];
     error: string;
 }
 
@@ -24,7 +24,7 @@ const Main: FC<MainProps> = () => {
     const initialState: MainState = {
         isFetching: false,
         searchWord: '',
-        location: null,
+        locations: [],
         error: '',
     };
 
@@ -42,8 +42,18 @@ const Main: FC<MainProps> = () => {
         });
 
         locationService.getLocationsBySearchWord(state.searchWord.toLocaleLowerCase())
-            .then(response => locationService.getWeatherForTheLocationWoeid(response.data[0].woeid))
-            .then(response => setState({ ...state, location: response.data, isFetching: false }))
+            .then(response => {
+                if (response.data.length) {
+                    return Promise.all(response.data.map(location => locationService.getWeatherForTheLocationWoeid(location.woeid)));
+                }
+                setState({ ...state, error: 'There are no results for this search' });
+            })
+            .then(response => response && setState({
+                ...state,
+                locations: [...state.locations, ...response.map(location => location.data)],
+                isFetching: false,
+                error: '',
+            }))
             .catch(e => setState({ ...state, error: e.message }));
     };
 
@@ -55,7 +65,8 @@ const Main: FC<MainProps> = () => {
         <div>
             <UserInput onChange={onInputChange} placeholder="Location" />
             <Button label="Search" onClick={onButtonClick} />
-            {state.location && <LocationWeatherItem location={state.location} />}
+            {state.isFetching && <p>Loading...</p>}
+            {state.locations.map(location => <LocationWeatherItem location={location} />)}
             {state.error && <Error message={state.error} />}
         </div>
     );

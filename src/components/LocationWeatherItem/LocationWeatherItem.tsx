@@ -10,7 +10,8 @@ const LocationWeatherItem: FC<LocationWeatherItemProps> = ({ location }) => {
     const currentDate = new Date();
     const todayWeather = location.consolidated_weather.find(weather => new Date(weather.applicable_date).getDate() === currentDate.getDate());
     if (!todayWeather) {
-        return <Error message="There is no weather for a such day" />;
+        const message = `There is no weather information about ${location.title} for today`;
+        return <Error message={message} />;
     }
 
     return (
